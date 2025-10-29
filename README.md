@@ -1,5 +1,7 @@
 # usgs-geojson-earthquakes
 
+data link: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson
+
 ## Project Goal
 Visualize earthquake events using USGS GeoJSON Detail records to reveal spatial patterns, temporal trends, event severity distribution, and relationships between event metadata and secondary products such as shakemaps and focal mechanisms.
 
