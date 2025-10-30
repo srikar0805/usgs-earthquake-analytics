@@ -1,6 +1,7 @@
+
 # usgs-geojson-earthquakes
 
-data link: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson
+**Data link:** https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson
 
 ## Project Goal
 Visualize earthquake events using USGS GeoJSON Detail records to reveal spatial patterns, temporal trends, event severity distribution, and relationships between event metadata and secondary products such as shakemaps and focal mechanisms.
@@ -66,35 +67,66 @@ These outputs are saved in the `visualizations/` folder as `.png` images, with t
 
 ---
 
-## Broader Impact
-In addition to the dataset description, this project emphasizes the importance of multidimensional visualization. By combining spatial, temporal, and scalar perspectives, the analysis provides a holistic view of earthquake activity. The interactive heatmap highlights where and when seismic events occur, while the scatter plot and frequency chart reveal deeper insights into the relationships between magnitude, depth, and time.
+## NEW: Earthquake Commonalities (Same‑Day Co‑Occurrence)
 
-These visualizations are designed not only to meet academic requirements but also to serve as a foundation for real-world applications. The same techniques could be extended to build dashboards for disaster preparedness, population risk modeling, or infrastructure planning. By making complex seismic data more accessible and interpretable, this project demonstrates the power of visualization in bridging raw data and actionable knowledge.
+Generate a **single HTML** that shows grid cells on the world map which **frequently co‑occur** (A→B) on the **same day**, plus a top‑cells bar chart and a rules table. This is fast, robust, and uses only pandas/numpy + Plotly.
+
+### Run
+```bash
+python earthquake_commonalities.py   --input data/GeoQuake.json   --output visualizations/commonalities.html   --grid-size 2.0   --min-mag 3.0   --min-cell-days 4   --min-pair-support 0.03   --min-conf 0.9   --top-cells 200   --top-edges 100
+```
+
+### Parameters
+- `--grid-size` (deg): coarser grid = fewer cells & faster (try 3.0–4.0 if large).
+- `--min-mag`: ignore tiny quakes (e.g., 4.0) to reduce noise.
+- `--min-cell-days`: drop cells appearing on fewer days (6–8 speeds things up).
+- `--min-pair-support`: min P(A∧B) across days (0.03–0.08 typical).
+- `--min-conf`: require strong A→B relationships (0.8–0.95).
+- `--top-cells`: cap to most frequent cells before pairs.
+- `--top-edges`: how many edges to draw/list.
+
+### Output
+- `visualizations/commonalities.html` – interactive map + charts + table (self‑contained).
 
 ---
 
-## How to Run
+## How to Run (core visualizations)
 
 1. Clone this repository and navigate into the project folder.
 2. Ensure you have Python 3.10+ installed.
 3. Install dependencies:
    ```bash
    pip install pandas plotly kaleido moviepy
+   ```
+4. Place your USGS GeoJSON file in the `data/` directory as `GeoQuake.json`.
 
-Place your USGS GeoJSON file in the data/ directory as GeoQuake.json.
+To render the new **Commonalities** HTML you also need Plotly (already listed).
+
+---
 
 ## Repository Structure
 
+```
 ├── data/
 │   └── GeoQuake.json
 ├── src/
-│   └── visualize_earthquakes.py
-|   |__ extension.ipynb
+│   ├── visualize_earthquakes.py
+│   └── extension.ipynb
+│   └── earthquake_commonalities.py
 ├── visualizations/
 │   ├── heatmap_temporal.html
+│   ├── commanalities.html
 │   ├── heatmap_temporal.mp4
 │   ├── scatter_depth_magnitude.png
 │   ├── frequency_over_time.png
 │   └── captions.md
 ├── README.md
-└── DATA.md# usgs-earthquake-predictive
+└── DATA.md
+```
+
+---
+
+## Broader Impact
+In addition to the dataset description, this project emphasizes the importance of multidimensional visualization. By combining spatial, temporal, and scalar perspectives, the analysis provides a holistic view of earthquake activity. The interactive heatmap highlights where and when seismic events occur, while the scatter plot and frequency chart reveal deeper insights into the relationships between magnitude, depth, and time.
+
+These visualizations are designed not only to meet academic requirements but also to serve as a foundation for real-world applications. The same techniques could be extended to build dashboards for disaster preparedness, population risk modeling, or infrastructure planning. By making complex seismic data more accessible and interpretable, this project demonstrates the power of visualization in bridging raw data and actionable knowledge.
