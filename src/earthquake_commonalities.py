@@ -165,40 +165,150 @@ def cooccurrence_rules(onehot: pd.DataFrame, min_pair_support: float, min_conf: 
 def build_world_map(rules: pd.DataFrame, cell_support: pd.Series, grid_size: float):
     fig = go.Figure()
 
-    # Nodes = any cell appearing in rules, size by singleton support
-    node_cells = sorted(set(rules["antecedent"]).union(set(rules["consequent"])))
-    node_lats, node_lons, node_sizes, node_text = [], [], [], []
-    for c in node_cells:
-        la, lo = cell_center(c, grid_size)
-        node_lats.append(la); node_lons.append(lo)
-        supp = float(cell_support.get(c, 0.0))
-        node_sizes.append(6 + 20*supp)  # size by support
-        node_text.append(f"{c}<br>support={supp:.3f}")
-
-    fig.add_trace(go.Scattergeo(
-        lon=node_lons, lat=node_lats, mode="markers",
-        text=node_text, hoverinfo="text",
-        marker=dict(size=node_sizes),
-        name="Cells"
-    ))
-
-    # Edges
     for _, r in rules.iterrows():
         a, b = r["antecedent"], r["consequent"]
         la1, lo1 = cell_center(a, grid_size)
         la2, lo2 = cell_center(b, grid_size)
-        hover = f"{a} → {b}<br>conf={r['confidence']:.3f}, lift={r['lift']:.3f}, supp={r['support']:.3f}"
+
+        conf = float(r["confidence"])
+        line_color = f"rgba(80,80,80,{0.3 + 0.5 * conf})"
+        line_width = 0.8 + 2.5 * conf
+
         fig.add_trace(go.Scattergeo(
-            lon=[lo1, lo2], lat=[la1, la2],
-            mode="lines", line=dict(width=1),
-            name=f"{a}→{b}", hoverinfo="text", text=hover
+            lon=[lo1, lo2],
+            lat=[la1, la2],
+            mode="lines",
+            line=dict(width=line_width, color=line_color),
+            hoverinfo="skip",
+            showlegend=False
         ))
 
+    cell_links = {c: {"out": [], "in": []} for c in set(rules["antecedent"]).union(rules["consequent"])}
+
+    for _, r in rules.iterrows():
+        a, b = r["antecedent"], r["consequent"]
+        cell_links[a]["out"].append((b, r["confidence"]))
+        cell_links[b]["in"].append((a, r["confidence"]))
+
+    ante_cells = sorted(set(rules["antecedent"]))
+    ante_lats, ante_lons, ante_sizes, ante_colors, ante_text = [], [], [], [], []
+
+    for c in ante_cells:
+        la, lo = cell_center(c, grid_size)
+        supp = float(cell_support.get(c, 0.0))
+        out_links = "<br>".join([f"→ {b} (conf={conf:.2f})" for b, conf in cell_links[c]["out"]])
+        in_links = "<br>".join([f"← {a} (conf={conf:.2f})" for a, conf in cell_links[c]["in"]])
+        hover = (
+            f"<b>Antecedent:</b> {c}<br>"
+            f"Support: {supp:.3f}<br>"
+            f"<b>Outgoing:</b><br>{out_links or 'None'}<br>"
+            f"<b>Incoming:</b><br>{in_links or 'None'}"
+        )
+
+        ante_lats.append(la)
+        ante_lons.append(lo)
+        ante_sizes.append(3 + 10 * (supp ** 0.5))
+        ante_colors.append(supp)
+        ante_text.append(hover)
+
+    fig.add_trace(go.Scattergeo(
+        lon=ante_lons,
+        lat=ante_lats,
+        mode="markers",
+        text=ante_text,
+        marker=dict(
+            size=ante_sizes,
+            color=ante_colors,
+            colorscale=[
+                [0.0, "rgb(170,210,255)"],
+                [0.3, "rgb(110,170,250)"],
+                [0.7, "rgb(40,100,210)"],
+                [1.0, "rgb(0,50,160)"]
+            ],
+            colorbar=dict(
+                title="Antecedent Support",
+                x=1.02, y=0.75, len=0.4
+            ),
+            line=dict(width=0.5, color="black"),
+            opacity=0.9
+        ),
+        hovertemplate="%{text}<extra></extra>",
+        name="Antecedent (A)"
+    ))
+
+    cons_cells = sorted(set(rules["consequent"]))
+    cons_lats, cons_lons, cons_sizes, cons_colors, cons_text = [], [], [], [], []
+
+    for c in cons_cells:
+        la, lo = cell_center(c, grid_size)
+        supp = float(cell_support.get(c, 0.0))
+        out_links = "<br>".join([f"→ {b} (conf={conf:.2f})" for b, conf in cell_links[c]["out"]])
+        in_links = "<br>".join([f"← {a} (conf={conf:.2f})" for a, conf in cell_links[c]["in"]])
+        hover = (
+            f"<b>Consequent:</b> {c}<br>"
+            f"Support: {supp:.3f}<br>"
+            f"<b>Outgoing:</b><br>{out_links or 'None'}<br>"
+            f"<b>Incoming:</b><br>{in_links or 'None'}"
+        )
+
+        cons_lats.append(la)
+        cons_lons.append(lo)
+        cons_sizes.append(3 + 10 * (supp ** 0.5))
+        cons_colors.append(supp)
+        cons_text.append(hover)
+
+    fig.add_trace(go.Scattergeo(
+        lon=cons_lons,
+        lat=cons_lats,
+        mode="markers",
+        text=cons_text,
+        marker=dict(
+            size=cons_sizes,
+            color=cons_colors,
+            colorscale="Reds",
+            colorbar=dict(
+                title="Consequent Support",
+                x=1.02, y=0.25, len=0.4
+            ),
+            line=dict(width=0.5, color="black"),
+            opacity=0.9
+        ),
+        hovertemplate="%{text}<extra></extra>",
+        name="Consequent (B)"
+    ))
+
     fig.update_layout(
-        title="Earthquake Commonalities: Same-Day Co-Occurrence Rules (A → B)",
-        geo=dict(projection_type="natural earth", showcountries=True, showland=True),
-        height=650, margin=dict(l=10, r=10, t=50, b=10)
+        title=(
+            "Earthquake Commonalities (A → B)<br>"
+            "<sup>Node size & color ∝ Support; Line width ∝ Confidence</sup>"
+        ),
+        geo=dict(
+            projection_type="natural earth",
+            showcountries=True,
+            showland=True,
+            landcolor="rgb(245,245,245)",
+            countrycolor="rgb(190,190,190)"
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=0.01,
+            xanchor="center",
+            x=0.5
+        ),
+        annotations=[
+            dict(
+                text="Visualization: Co-occurrence of Earthquakes by Grid Cell (Same Day)",
+                showarrow=False,
+                xref="paper", yref="paper",
+                x=0, y=-0.1,
+                font=dict(size=12, color="gray")
+            )
+        ],
+        height=650,
+        margin=dict(l=10, r=10, t=70, b=40)
     )
+
     return fig
 
 def build_table(rules: pd.DataFrame):
@@ -272,8 +382,8 @@ def generate_html(fig_map: go.Figure, fig_table: go.Figure, fig_bar: go.Figure, 
 
 def parse_args():
     p = argparse.ArgumentParser(description="Create an HTML showing earthquake co-occurrence commonalities.")
-    p.add_argument("--input", default="data/GeoQuake.json", help="GeoJSON file or USGS URL")
-    p.add_argument("--output", default="visualizations/commonalities.html", help="Output HTML path")
+    p.add_argument("--input", default="../data/GeoQuake.json", help="GeoJSON file or USGS URL")
+    p.add_argument("--output", default="../visualizations/commonalities.html", help="Output HTML path")
     p.add_argument("--grid-size", type=float, default=2.0, help="Grid size in degrees (coarser = faster)")
     p.add_argument("--min-mag", type=float, default=3.0, help="Minimum magnitude to include")
     p.add_argument("--min-cell-days", type=int, default=4, help="Keep cells appearing on >= this many days")

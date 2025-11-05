@@ -7,7 +7,7 @@ from moviepy import VideoFileClip
 import imageio.v2 as imageio
 
 # Load GeoJSON file
-with open("data/GeoQuake.json") as f:
+with open("../data/GeoQuake.json") as f:
     data = json.load(f)
 
 # Parse features
@@ -50,12 +50,18 @@ fig_map = px.scatter_geo(
     color_continuous_scale="Turbo",
     size_max=10
 )
-fig_map.write_html("visualizations/heatmap_temporal.html")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+OUT_DIR = os.path.join(BASE_DIR, "..", "visualizations")
+os.makedirs(OUT_DIR, exist_ok=True)
+
+fig_map.write_html(os.path.join(OUT_DIR, "heatmap_temporal.html"))
 
 # ----------------------------------------
 # 1A. Save frames for video
 # ----------------------------------------
-frame_dir = "visualizations/frames"
+frame_dir = "../visualizations/frames"
 os.makedirs(frame_dir, exist_ok=True)
 
 for date in sorted(df["date"].unique()):
@@ -78,8 +84,8 @@ for date in sorted(df["date"].unique()):
 # 1B. Convert frames to video
 # ----------------------------------------
     
-images = [imageio.imread(f"visualizations/frames/{img}") for img in sorted(os.listdir("visualizations/frames")) if img.endswith(".png")]
-imageio.mimsave("visualizations/heatmap_temporal.mp4", images, fps=2)
+images = [imageio.imread(f"../visualizations/frames/{img}") for img in sorted(os.listdir("../visualizations/frames")) if img.endswith(".png")]
+imageio.mimsave("../visualizations/heatmap_temporal.mp4", images, fps=2)
 
 # ----------------------------------------
 # 2. Magnitude vs Depth Scatter Plot
@@ -95,7 +101,7 @@ fig_scatter = px.scatter(
     color_continuous_scale="Viridis"
 )
 fig_scatter.update_yaxes(autorange="reversed")
-fig_scatter.write_image("visualizations/scatter_depth_magnitude.png")
+fig_scatter.write_image("../visualizations/scatter_depth_magnitude.png")
 
 # ----------------------------------------
 # 3. Earthquake Frequency Over Time
@@ -108,4 +114,4 @@ fig_line = px.line(
     title="Earthquake Frequency Over Time",
     labels={"date": "Date", "count": "Number of Earthquakes"}
 )
-fig_line.write_image("visualizations/frequency_over_time.png")
+fig_line.write_image("../visualizations/frequency_over_time.png")
